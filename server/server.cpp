@@ -26,7 +26,9 @@ std::vector<int> clients;
 std::vector<std::string> usernames;
 std::mutex clients_mutex;
 
-void broadcast_message(const std::string& message, int sender_socket) {
+int counter = 0;
+
+void SendBroadcastMessage(const std::string& message, int sender_socket) {
     std::lock_guard<std::mutex> lock(clients_mutex);
     for (int client_socket : clients) {
         if (client_socket != sender_socket) {
@@ -35,7 +37,7 @@ void broadcast_message(const std::string& message, int sender_socket) {
     }
 }
 
-void handle_client(int client_socket) {
+void ClientHandle(int client_socket) {
     char buffer[kMaxMessageSize]{};
     char username[kMaxUsernameSize]{};
     bool isRegistrated = false;
@@ -64,7 +66,8 @@ void handle_client(int client_socket) {
             send(client_socket, registrationError.c_str(), registrationError.size(), 0);
         }
     }
-    std::cout << " -- Registration completed! Username: " << username << '\n';
+    counter++;
+    std::cout << "\033[92m -- Пользователь " << username << " подключился! Всего пользователей: " << counter << "\033[0m\n";
 
     {
         std::lock_guard<std::mutex> lock(clients_mutex);
@@ -76,7 +79,8 @@ void handle_client(int client_socket) {
         ssize_t bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
 
         if (bytes_received <= 0) {
-            std::cout << " -- Клиент отключился.\n";
+            std::cout << "\033[91m -- Пользователь " << username << " отключился! Всего пользователей: " << (clients.size() - 1) << "\033[0m\n";
+            counter--;
             break;
         }
 
@@ -84,9 +88,9 @@ void handle_client(int client_socket) {
         message += ": ";
         message.append(buffer);
         message.shrink_to_fit();
-        std::cout << " -- Message by " <<  message << '\n';
+        std::cout << "\033[90m >> Отправлено пользователем " << message << "\033[0m\n";
 
-        broadcast_message(message, client_socket);
+        SendBroadcastMessage(message, client_socket);
     }
 
     close(client_socket);
@@ -107,7 +111,7 @@ int main() {
 
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd == -1) {
-        std::cerr << " -- Ошибка создания сокета\n";
+        std::cerr << "\033[91m -- Ошибка создания сокета\033[0m\n";
         return 1;
     }
 
@@ -117,18 +121,18 @@ int main() {
     address.sin_port = htons(54000);
 
     if (bind(server_fd, (sockaddr*)&address, sizeof(address)) < 0) {
-        std::cerr << " -- Ошибка bind\n";
+        std::cerr << "\033[91m -- Ошибка bind\033[0m\n";
         close(server_fd);
         return 1;
     }
 
     if (listen(server_fd, kMaxBacklog) < 0) {
-        std::cerr << " -- Ошибка listen\n";
+        std::cerr << "\033[91m -- Ошибка listen\033[0m\n";
         close(server_fd);
         return 1;
     }
 
-    std::cout << " -- Ожидание подключения клиентов...\n";
+    std::cout << "\033[90m -- Ожидение пользователей...\033[0m\n";
 
     while (true) {
         sockaddr_in client_address{};
@@ -137,18 +141,16 @@ int main() {
         int client_socket = accept(server_fd, (sockaddr*)&client_address, &client_len);
 
         if (client_socket < 0) {
-            std::cerr << " -- Ошибка accept\n";
+            std::cerr << "\033[91m -- Ошибка accept\033[0m\n";
             continue;
         }
-
-        std::cout << " -- Клиент подключен!\n";
 
         {
             std::lock_guard<std::mutex> lock(clients_mutex);
             clients.push_back(client_socket);
         }
 
-        std::thread(handle_client, client_socket).detach();
+        std::thread(ClientHandle, client_socket).detach();
     }
 
     close(server_fd);
