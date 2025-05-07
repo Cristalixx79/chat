@@ -6,13 +6,13 @@
 #include <unistd.h>
 #include <thread>
 
-void receive_messages(int sock) {
+void receive_messages(int client) {
     char buffer[1024];
 
     while (true) {
         memset(buffer, 0, sizeof(buffer));
 
-        ssize_t bytes_received = recv(sock , buffer , sizeof(buffer), 0 );
+        ssize_t bytes_received = recv(client , buffer , sizeof(buffer), 0 );
 
         if(bytes_received <= 0){
             std::cout << "\033[91m -- Сервер отключился\033[0m\n";
@@ -35,9 +35,9 @@ std::string WriteMessage() {
 int main() {
     std::system("clear");
 
-    int sock = socket(AF_INET , SOCK_STREAM , 0 );
+    int client = socket(AF_INET , SOCK_STREAM , 0 );
 
-    if (sock == -1) {
+    if (client == -1) {
         std::cerr << "\033[91mНе удалось создать сокет\033[0m\n";
         return 1;
     }
@@ -48,9 +48,9 @@ int main() {
     server.sin_family = AF_INET;
     server.sin_port = htons(54000);
 
-    if (connect(sock , (sockaddr *)&server , sizeof(server)) < 0) {
+    if (connect(client , (sockaddr *)&server , sizeof(server)) < 0) {
         std::cerr << "\033[91m -- Не удалось подключиться к серверу\033[0m\n";
-        close(sock);
+        close(client);
         return 1;
     }
 
@@ -59,37 +59,36 @@ int main() {
         std::string username = WriteMessage();
         std::cout << '\n';
 
-        send(sock, username.c_str(), username.size(), 0);
+        send(client, username.c_str(), username.size(), 0);
         bool isRegistrated = false;
 
         while (!isRegistrated) {
             char registrationResult[4]{};
-            recv(sock, registrationResult, sizeof(registrationResult), 0);
+            recv(client, registrationResult, sizeof(registrationResult), 0);
             if (std::string(registrationResult) == "200") isRegistrated = true;
             else {
                 std::cout << "\033[91m -- Имя уже занято, ведите заново: \033[0m";
                 std::string username = WriteMessage();
                 std::cout << '\n';
 
-                send(sock, username.c_str(), username.size(), 0);
+                send(client, username.c_str(), username.size(), 0);
             }
-            registrationResult[4] = {};
         }
 
-        if(username == "exit") return 1;
+        if(username == "exit()") return 1;
     }
 
-    std::thread(receive_messages, sock).detach();
+    std::thread(receive_messages, client).detach();
 
     while(true) {
         std::string message = WriteMessage();
 
-        if(message == "exit") break;
+        if(message == "exit()") break;
 
-        send(sock , message.c_str() , message.size() , 0 );
+        send(client , message.c_str() , message.size() , 0 );
     }
 
     std::cout << "\n\033[93m -- Отключение...\033[0m\n";
-    close(sock);
+    close(client);
     return 0;
 }

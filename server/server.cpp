@@ -27,7 +27,7 @@ std::mutex clients_mutex;
 
 int counter = 0;
 
-void SendBroadcastMessage(const std::string& message, int sender_socket) {
+void SendMessage(const std::string& message, int sender_socket) {
     std::lock_guard<std::mutex> lock(clients_mutex);
     for (auto it : users) {
         if (it.first != sender_socket) {
@@ -89,7 +89,7 @@ void ClientHandle(int client_socket) {
         message.shrink_to_fit();
         std::cout << "\033[90m >> Отправлено пользователем " << message << "\033[0m\n";
 
-        SendBroadcastMessage(message, client_socket);
+        SendMessage(message, client_socket);
     }
 
     close(client_socket);
