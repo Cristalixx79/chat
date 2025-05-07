@@ -1,0 +1,156 @@
+#include <iostream>
+#include <string>
+#include <cstring>
+#include <vector>
+#include <thread>
+#include <mutex>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+
+int CountChar(char ch[]) {
+    int i = 0;
+    while (ch[i] != '\0') i++;
+    return i;
+}
+
+namespace {
+const int kMaxBacklog = 10;
+const int kMaxUsernameSize = 32;
+const int kMaxMessageSize = 1024;
+const std::string registrationSuccsses = "200";
+const std::string registrationError = "300";
+}
+
+std::vector<int> clients;
+std::vector<std::string> usernames;
+std::mutex clients_mutex;
+
+void broadcast_message(const std::string& message, int sender_socket) {
+    std::lock_guard<std::mutex> lock(clients_mutex);
+    for (int client_socket : clients) {
+        if (client_socket != sender_socket) {
+            send(client_socket, message.c_str(), message.size(), 0);
+        }
+    }
+}
+
+void handle_client(int client_socket) {
+    char buffer[kMaxMessageSize]{};
+    char username[kMaxUsernameSize]{};
+    bool isRegistrated = false;
+    ssize_t username_bytes_received = 0;
+
+    while (!isRegistrated) {
+        memset(username, 0, sizeof(username));
+        ssize_t username_bytes_received = recv(client_socket, username, sizeof(username), 0);
+
+        if (usernames.size() == 0) {
+            isRegistrated = true;
+        } else {
+            for (size_t i = 0; i < usernames.size(); i++) {
+                if (std::string(username) == usernames[i]) {
+                    isRegistrated = false;
+                    break;
+                } else {
+                    isRegistrated = true;
+                }
+            }
+        }
+
+        if (isRegistrated) {
+            send(client_socket, registrationSuccsses.c_str(), registrationSuccsses.size(), 0);
+        } else {
+            send(client_socket, registrationError.c_str(), registrationError.size(), 0);
+        }
+    }
+    std::cout << " -- Registration completed! Username: " << username << '\n';
+
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex);
+        usernames.push_back(std::string(username));
+    }
+
+    while (true) {
+        memset(buffer, 0, sizeof(buffer));
+        ssize_t bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
+
+        if (bytes_received <= 0) {
+            std::cout << " -- Клиент отключился.\n";
+            break;
+        }
+
+        std::string message(username, CountChar(username));
+        message += ": ";
+        message.append(buffer);
+        message.shrink_to_fit();
+        std::cout << " -- Message by " <<  message << '\n';
+
+        broadcast_message(message, client_socket);
+    }
+
+    close(client_socket);
+
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex);
+        for (std::vector<int>::iterator it = clients.begin(); it != clients.end(); it++) {
+            if (*it == client_socket) {
+                clients.erase(it);
+                break;
+            }
+        }
+    }
+}
+
+int main() {
+    std::system("clear");
+
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd == -1) {
+        std::cerr << " -- Ошибка создания сокета\n";
+        return 1;
+    }
+
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = INADDR_ANY; // слушать все интерфейсы
+    address.sin_port = htons(54000);
+
+    if (bind(server_fd, (sockaddr*)&address, sizeof(address)) < 0) {
+        std::cerr << " -- Ошибка bind\n";
+        close(server_fd);
+        return 1;
+    }
+
+    if (listen(server_fd, kMaxBacklog) < 0) {
+        std::cerr << " -- Ошибка listen\n";
+        close(server_fd);
+        return 1;
+    }
+
+    std::cout << " -- Ожидание подключения клиентов...\n";
+
+    while (true) {
+        sockaddr_in client_address{};
+        socklen_t client_len = sizeof(client_address);
+
+        int client_socket = accept(server_fd, (sockaddr*)&client_address, &client_len);
+
+        if (client_socket < 0) {
+            std::cerr << " -- Ошибка accept\n";
+            continue;
+        }
+
+        std::cout << " -- Клиент подключен!\n";
+
+        {
+            std::lock_guard<std::mutex> lock(clients_mutex);
+            clients.push_back(client_socket);
+        }
+
+        std::thread(handle_client, client_socket).detach();
+    }
+
+    close(server_fd);
+    return 0;
+}
