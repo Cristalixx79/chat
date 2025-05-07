@@ -27,11 +27,20 @@ std::mutex clients_mutex;
 
 int counter = 0;
 
-void SendMessage(const std::string& message, int sender_socket) {
+void SendBroadcastMessage(const std::string& message, int sender_socket) {
     std::lock_guard<std::mutex> lock(clients_mutex);
     for (auto it : users) {
         if (it.first != sender_socket) {
             send(it.first, message.c_str(), message.size(), 0);
+        }
+    }
+}
+void SendPrivateMessage(const std::string& message, int sender_socket) {
+    std::lock_guard<std::mutex> lock(clients_mutex);
+    for (auto it : users) {
+        if (it.first == sender_socket) {
+            send(it.first, message.c_str(), message.size(), 0);
+            break;
         }
     }
 }
@@ -84,12 +93,25 @@ void ClientHandle(int client_socket) {
         }
 
         std::string message(username, CountChar(username));
-        message += ": ";
+        message.append(": ");
         message.append(buffer);
         message.shrink_to_fit();
-        std::cout << "\033[90m >> Отправлено пользователем " << message << "\033[0m\n";
 
-        SendMessage(message, client_socket);
+        if (message.find("/msg-") != std::string::npos) {
+            std::string temp = message.erase(0, message.find("/msg-") + 5);
+            std::string address = temp.erase(temp.find(" "), std::string::npos);
+
+            for (auto it = users.begin(); it != users.end(); it++) {
+                if ((*it).second == address) {
+                    std::cout << ">> " << (*it).second << '\n';
+                    SendPrivateMessage(message, (*it).first);
+                    break;
+                }
+            }
+        } else {
+            std::cout << "\033[90m >> Отправлено пользователем " << message << "\033[0m\n";
+            SendBroadcastMessage(message, client_socket);
+        }
     }
 
     close(client_socket);
