@@ -22,17 +22,16 @@ const std::string registrationSuccsses = "200";
 const std::string registrationError = "300";
 }
 
-std::vector<int> clients;
-std::vector<std::string> usernames;
+std::vector<std::pair<int, std::string>> users;
 std::mutex clients_mutex;
 
 int counter = 0;
 
 void SendBroadcastMessage(const std::string& message, int sender_socket) {
     std::lock_guard<std::mutex> lock(clients_mutex);
-    for (int client_socket : clients) {
-        if (client_socket != sender_socket) {
-            send(client_socket, message.c_str(), message.size(), 0);
+    for (auto it : users) {
+        if (it.first != sender_socket) {
+            send(it.first, message.c_str(), message.size(), 0);
         }
     }
 }
@@ -47,11 +46,11 @@ void ClientHandle(int client_socket) {
         memset(username, 0, sizeof(username));
         ssize_t username_bytes_received = recv(client_socket, username, sizeof(username), 0);
 
-        if (usernames.size() == 0) {
+        if (users.size() == 0) {
             isRegistrated = true;
         } else {
-            for (size_t i = 0; i < usernames.size(); i++) {
-                if (std::string(username) == usernames[i]) {
+            for (size_t i = 0; i < users.size(); i++) {
+                if (std::string(username) == users[i].second) {
                     isRegistrated = false;
                     break;
                 } else {
@@ -71,7 +70,7 @@ void ClientHandle(int client_socket) {
 
     {
         std::lock_guard<std::mutex> lock(clients_mutex);
-        usernames.push_back(std::string(username));
+        users.push_back(std::pair(client_socket, username));
     }
 
     while (true) {
@@ -79,7 +78,7 @@ void ClientHandle(int client_socket) {
         ssize_t bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
 
         if (bytes_received <= 0) {
-            std::cout << "\033[91m -- Пользователь " << username << " отключился! Всего пользователей: " << (clients.size() - 1) << "\033[0m\n";
+            std::cout << "\033[91m -- Пользователь " << username << " отключился! Всего пользователей: " << (users.size() - 1) << "\033[0m\n";
             counter--;
             break;
         }
@@ -97,9 +96,9 @@ void ClientHandle(int client_socket) {
 
     {
         std::lock_guard<std::mutex> lock(clients_mutex);
-        for (std::vector<int>::iterator it = clients.begin(); it != clients.end(); it++) {
-            if (*it == client_socket) {
-                clients.erase(it);
+        for (auto it = users.begin(); it != users.end(); it++) {
+            if ((*it).first == client_socket && (*it).second == username) {
+                users.erase(it);
                 break;
             }
         }
@@ -143,11 +142,6 @@ int main() {
         if (client_socket < 0) {
             std::cerr << "\033[91m -- Ошибка accept\033[0m\n";
             continue;
-        }
-
-        {
-            std::lock_guard<std::mutex> lock(clients_mutex);
-            clients.push_back(client_socket);
         }
 
         std::thread(ClientHandle, client_socket).detach();
