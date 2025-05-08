@@ -23,12 +23,18 @@ void ReceiveMessage(int client) {
         std::memset(buffer, 0, kMaxMessageSize);
         ssize_t bytes_received = recv(client, buffer, sizeof(buffer), 0);
 
-        if(bytes_received <= 0){
+        if (std::string(buffer) == "/ban") {
+            std::cout << "\033[91m -- You have been permanently banned!\033[0m\n";
+            break;
+        }
+        if (bytes_received <= 0){
             std::cout << "\033[91m -- Сервер отключился\033[0m\n";
             break;
         }
         std::cout << "\033[90m" << buffer << "\033[0m\n";
     }
+    close(client);
+    std::exit(EXIT_FAILURE);
 }
 
 std::string ColorMessage() {

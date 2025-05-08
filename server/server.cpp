@@ -21,23 +21,26 @@ const int kMaxMessageSize = 1024;
 const std::string registrationSuccsses = "200";
 const std::string registrationError = "300";
 const std::string privateMessageSendingError = "\033[91mServer: error while sending private message. User not found\033[0m";
+const std::string warning = "\033[91mWarning! Don't spam! Next warning = ban!\033[0m";
+const std::string ban = "/ban";
+const std::vector<std::string> adminCommands({"/warn", "/ban"});
 }
 
 std::vector<std::pair<int, std::string>> users;
-std::mutex clients_mutex;
+std::mutex clientMutex;
 
 int counter = 0;
 
 void SendBroadcastMessage(const std::string& message, int receiverSocket) {
-    std::lock_guard<std::mutex> lock(clients_mutex);
+    std::lock_guard<std::mutex> lock(clientMutex);
     for (auto it : users) {
         if (it.first != receiverSocket) {
             send(it.first, message.c_str(), message.size(), 0);
         }
     }
 }
-void SendPrivateMessage(const std::string& message, int receiverSocket, int client_socket) {
-    std::lock_guard<std::mutex> lock(clients_mutex);
+void SendPrivateMessage(const std::string& message, int receiverSocket, int clientSocket) {
+    std::lock_guard<std::mutex> lock(clientMutex);
     for (auto it : users) {
         if (it.first == receiverSocket) {
             send(it.first, message.c_str(), message.size(), 0);
@@ -46,14 +49,14 @@ void SendPrivateMessage(const std::string& message, int receiverSocket, int clie
     }
 }
 
-void ClientHandle(int client_socket) {
+void ClientHandle(int clientSocket) {
     char username[kMaxUsernameSize]{};
     bool isRegistrated = false;
-    ssize_t username_bytes_received = 0;
+    ssize_t clientBytesReceived = 0;
 
     while (!isRegistrated) {
         memset(username, 0, sizeof(username));
-        ssize_t username_bytes_received = recv(client_socket, username, sizeof(username), 0);
+        ssize_t clientBytesReceived = recv(clientSocket, username, sizeof(username), 0);
 
         if (users.size() == 0) {
             isRegistrated = true;
@@ -69,25 +72,25 @@ void ClientHandle(int client_socket) {
         }
 
         if (isRegistrated) {
-            send(client_socket, registrationSuccsses.c_str(), registrationSuccsses.size(), 0);
+            send(clientSocket, registrationSuccsses.c_str(), registrationSuccsses.size(), 0);
         } else {
-            send(client_socket, registrationError.c_str(), registrationError.size(), 0);
+            send(clientSocket, registrationError.c_str(), registrationError.size(), 0);
         }
     }
     counter++;
     std::cout << "\033[92m -- Пользователь " << username << " подключился! Всего пользователей: " << counter << "\033[0m\n";
 
     {
-        std::lock_guard<std::mutex> lock(clients_mutex);
-        users.push_back(std::pair(client_socket, username));
+        std::lock_guard<std::mutex> lock(clientMutex);
+        users.push_back(std::pair(clientSocket, username));
     }
 
     char buffer[kMaxMessageSize]{};
     while (true) {
         memset(buffer, 0, sizeof(buffer));
-        ssize_t bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
+        ssize_t clientBytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
 
-        if (bytes_received <= 0) {
+        if (clientBytesReceived <= 0) {
             std::cout << "\033[91m -- Пользователь " << username << " отключился! Всего пользователей: " << (users.size() - 1) << "\033[0m\n";
             counter--;
             break;
@@ -105,26 +108,73 @@ void ClientHandle(int client_socket) {
             for (auto it = users.begin(); it != users.end(); it++) {
                 if ((*it).second == address) {
                     std::string privateMessage = std::string(username) + "(private):" + message.substr(message.find(" "), message.size());
-                    SendPrivateMessage(privateMessage, (*it).first, client_socket);
+                    SendPrivateMessage(privateMessage, (*it).first, clientSocket);
                     isSent = true;
                     break;
                 }
             }
-            if (!isSent) send(client_socket, privateMessageSendingError.c_str(), privateMessageSendingError.size(), 0);
+            if (!isSent) send(clientSocket, privateMessageSendingError.c_str(), privateMessageSendingError.size(), 0);
         } else {
             std::cout << "\033[90m >> Отправлено пользователем " << message << "\033[0m\n";
-            SendBroadcastMessage(message, client_socket);
+            SendBroadcastMessage(message, clientSocket);
         }
     }
 
-    close(client_socket);
-
+    close(clientSocket);
     {
-        std::lock_guard<std::mutex> lock(clients_mutex);
+        std::lock_guard<std::mutex> lock(clientMutex);
         for (auto it = users.begin(); it != users.end(); it++) {
-            if ((*it).first == client_socket && (*it).second == username) {
+            if ((*it).first == clientSocket && (*it).second == username) {
                 users.erase(it);
                 break;
+            }
+        }
+    }
+}
+
+void AdminPanel() {
+    while (true) {
+        std::string action = "";
+        std::getline(std::cin, action);
+        std::string command = action.substr(0, action.find(" "));
+        std::string user = action.substr(action.find(" ") + 1, action.size() - 1);
+
+        bool isAvailableCommand = false;
+        for (auto i : adminCommands) {
+            if (command == i) isAvailableCommand = true;
+        }
+        if (!isAvailableCommand) {
+            std::cout << "\033[91m -- \"" << command << "\" command not found. Try again: \033[0m";
+            continue;
+        }
+
+        bool isUserFound = false;
+        for (auto it = users.begin(); it != users.end(); it++) {
+            if ((*it).second == user) {
+                isUserFound = true;
+                break;
+            }
+        }
+        if (!isUserFound) {
+            std::cout << "\033[91m -- \"" << user << "\" user not found. Try again: \033[0m";
+            continue;
+        }
+
+        if (command == "/warn") {
+            std::lock_guard<std::mutex> lock(clientMutex);
+            for (auto it = users.begin(); it != users.end(); it++) {
+                if ((*it).second == user) {
+                    send((*it).first, warning.c_str(), warning.size(), 0);
+                    break;
+                }
+            }
+        } else if (command == "/ban") {
+            std::lock_guard<std::mutex> lock(clientMutex);
+            for (auto it = users.begin(); it != users.end(); it++) {
+                if ((*it).second == user) {
+                    send((*it).first, ban.c_str(), ban.size(), 0);
+                    break;
+                }
             }
         }
     }
@@ -133,8 +183,8 @@ void ClientHandle(int client_socket) {
 int main() {
     std::system("clear");
 
-    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (server_fd == -1) {
+    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == -1) {
         std::cerr << "\033[91m -- Ошибка создания сокета\033[0m\n";
         return 1;
     }
@@ -144,34 +194,35 @@ int main() {
     address.sin_addr.s_addr = INADDR_ANY; // слушать все интерфейсы
     address.sin_port = htons(54000);
 
-    if (bind(server_fd, (sockaddr*)&address, sizeof(address)) < 0) {
+    if (bind(serverSocket, (sockaddr*)&address, sizeof(address)) < 0) {
         std::cerr << "\033[91m -- Ошибка bind\033[0m\n";
-        close(server_fd);
+        close(serverSocket);
         return 1;
     }
 
-    if (listen(server_fd, kMaxBacklog) < 0) {
+    if (listen(serverSocket, kMaxBacklog) < 0) {
         std::cerr << "\033[91m -- Ошибка listen\033[0m\n";
-        close(server_fd);
+        close(serverSocket);
         return 1;
     }
 
     std::cout << "\033[90m -- Ожидение пользователей...\033[0m\n";
+    std::thread(AdminPanel).detach();
 
     while (true) {
-        sockaddr_in client_address{};
-        socklen_t client_len = sizeof(client_address);
+        sockaddr_in clientAddress{};
+        socklen_t clientAddressLen = sizeof(clientAddress);
 
-        int client_socket = accept(server_fd, (sockaddr*)&client_address, &client_len);
+        int clientSocket = accept(serverSocket, (sockaddr*)&clientAddress, &clientAddressLen);
 
-        if (client_socket < 0) {
+        if (clientSocket < 0) {
             std::cerr << "\033[91m -- Ошибка accept\033[0m\n";
             continue;
         }
 
-        std::thread(ClientHandle, client_socket).detach();
+        std::thread(ClientHandle, clientSocket).detach();
     }
 
-    close(server_fd);
+    close(serverSocket);
     return 0;
 }
