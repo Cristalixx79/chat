@@ -1,8 +1,8 @@
 #include <iostream>
 #include <string>
-#include <thread>
 #include <vector>
 #include <cstring>
+#include <thread>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -27,27 +27,27 @@ void ReceiveMessage(int client) {
             std::cout << "\033[91m -- Сервер отключился\033[0m\n";
             break;
         }
-
         std::cout << "\033[90m" << buffer << "\033[0m\n";
     }
 }
 
-std::string WriteMessage() {
+std::string ColorMessage() {
     std::string message = "";
     std::cout << "\033[90m";
     std::getline(std::cin, message);
     std::cout << "\033[0m";
 
+    return message;
+}
+
+std::string WriteMessage() {
+    std::string message = ColorMessage();
     if (ValidateMessage(message)) return message;
 
     std::cout << "\033[91m -- Такой команды нет, попробуйте снова\033[0m\n";
     bool isValidated = false;
     while (!isValidated) {
-        message = "";
-        std::cout << "\033[90m";
-        std::getline(std::cin, message);
-        std::cout << "\033[0m";
-
+        message = ColorMessage();
         if (ValidateMessage(message)) isValidated = true;
         else std::cout << "\033[91m -- Такой команды нет, попробуйте снова\033[0m\n";
     }
@@ -58,9 +58,7 @@ std::string ValidateName() {
     std::string name = "";
 
     while (!isValidated) {
-        std::cout << "\033[90m";
-        std::getline(std::cin, name);
-        std::cout << "\033[0m";
+        name = ColorMessage();
 
         if (name.find(" ") == std::string::npos) isValidated = true;
         else std::cout << "\033[91m -- Имя должно состоять из одного слова\033[0m\n";
@@ -110,10 +108,10 @@ int main() {
         return 1;
     }
 
+    std::string username = "";
     {
         std::cout << "\033[92m -- Подключено к серверу!\n -- Ведите ваше имя: \033[0m";
-        std::string username = ValidateName();
-        std::cout << '\n';
+        username = ValidateName();
 
         send(client, username.c_str(), username.size(), 0);
         bool isRegistrated = false;
@@ -125,14 +123,14 @@ int main() {
             else {
                 std::cout << "\033[91m -- Имя уже занято, ведите заново: \033[0m";
                 std::string username = ValidateName();
-                std::cout << '\n';
 
                 send(client, username.c_str(), username.size(), 0);
             }
         }
-        if(username == "/exit") return 1;
+        if(username == "/exit") return 0;
     }
 
+    std::cout << "\033[92m -- Добро пожаловать в чат, " << username << "!\033[0m\n\n";
     std::thread(ReceiveMessage, client).detach();
 
     while(true) {

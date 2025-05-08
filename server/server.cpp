@@ -20,6 +20,7 @@ const int kMaxUsernameSize = 32;
 const int kMaxMessageSize = 1024;
 const std::string registrationSuccsses = "200";
 const std::string registrationError = "300";
+const std::string privateMessageSendingError = "\033[91mServer: error while sending private message. User not found\033[0m";
 }
 
 std::vector<std::pair<int, std::string>> users;
@@ -27,18 +28,18 @@ std::mutex clients_mutex;
 
 int counter = 0;
 
-void SendBroadcastMessage(const std::string& message, int sender_socket) {
+void SendBroadcastMessage(const std::string& message, int receiverSocket) {
     std::lock_guard<std::mutex> lock(clients_mutex);
     for (auto it : users) {
-        if (it.first != sender_socket) {
+        if (it.first != receiverSocket) {
             send(it.first, message.c_str(), message.size(), 0);
         }
     }
 }
-void SendPrivateMessage(const std::string& message, int sender_socket) {
+void SendPrivateMessage(const std::string& message, int receiverSocket, int client_socket) {
     std::lock_guard<std::mutex> lock(clients_mutex);
     for (auto it : users) {
-        if (it.first == sender_socket) {
+        if (it.first == receiverSocket) {
             send(it.first, message.c_str(), message.size(), 0);
             break;
         }
@@ -46,7 +47,6 @@ void SendPrivateMessage(const std::string& message, int sender_socket) {
 }
 
 void ClientHandle(int client_socket) {
-    char buffer[kMaxMessageSize]{};
     char username[kMaxUsernameSize]{};
     bool isRegistrated = false;
     ssize_t username_bytes_received = 0;
@@ -82,6 +82,7 @@ void ClientHandle(int client_socket) {
         users.push_back(std::pair(client_socket, username));
     }
 
+    char buffer[kMaxMessageSize]{};
     while (true) {
         memset(buffer, 0, sizeof(buffer));
         ssize_t bytes_received = recv(client_socket, buffer, sizeof(buffer), 0);
@@ -100,19 +101,19 @@ void ClientHandle(int client_socket) {
         if (message.find("/msg-") != std::string::npos) {
             std::string temp = message.erase(0, message.find("/msg-") + 5);
             std::string address = temp.erase(temp.find(" "), std::string::npos);
-
+            bool isSent = false;
             for (auto it = users.begin(); it != users.end(); it++) {
                 if ((*it).second == address) {
                     std::string privateMessage = std::string(username) + "(private):" + message.substr(message.find(" "), message.size());
-                    SendPrivateMessage(privateMessage, (*it).first);
-                    message = "";
+                    SendPrivateMessage(privateMessage, (*it).first, client_socket);
+                    isSent = true;
                     break;
                 }
             }
+            if (!isSent) send(client_socket, privateMessageSendingError.c_str(), privateMessageSendingError.size(), 0);
         } else {
             std::cout << "\033[90m >> Отправлено пользователем " << message << "\033[0m\n";
             SendBroadcastMessage(message, client_socket);
-            message = "";
         }
     }
 
