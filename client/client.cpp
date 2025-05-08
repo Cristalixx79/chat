@@ -1,20 +1,26 @@
 #include <iostream>
 #include <string>
+#include <thread>
+#include <vector>
 #include <cstring>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <thread>
+
 
 namespace {
 const int kMaxMessageSize = 1024;
+const std::vector<std::string> localCommandList({"/exit", "/help"});
+const std::vector<std::string> publicCommandList({"/msg"});
 }
 
-void receive_messages(int client) {
-    char buffer[kMaxMessageSize];
+bool ValidateMessage(const std::string& message);
+
+void ReceiveMessage(int client) {
+    char buffer[kMaxMessageSize]{};
 
     while (true) {
-        memset(buffer, 0, sizeof(buffer));
+        std::memset(buffer, 0, kMaxMessageSize);
         ssize_t bytes_received = recv(client, buffer, sizeof(buffer), 0);
 
         if(bytes_received <= 0){
@@ -32,6 +38,19 @@ std::string WriteMessage() {
     std::getline(std::cin, message);
     std::cout << "\033[0m";
 
+    if (ValidateMessage(message)) return message;
+
+    std::cout << "\033[91m -- Такой команды нет, попробуйте снова\033[0m\n";
+    bool isValidated = false;
+    while (!isValidated) {
+        message = "";
+        std::cout << "\033[90m";
+        std::getline(std::cin, message);
+        std::cout << "\033[0m";
+
+        if (ValidateMessage(message)) isValidated = true;
+        else std::cout << "\033[91m -- Такой команды нет, попробуйте снова\033[0m\n";
+    }
     return message;
 }
 std::string ValidateName() {
@@ -48,6 +67,22 @@ std::string ValidateName() {
     }
 
     return name;
+}
+
+bool ValidateMessage(const std::string& message) {
+    if (message[0] == '/' && message.find(" ") != std::string::npos) {
+        if (message.find("-") == std::string::npos) return false;
+        std::string command = message.substr(0, message.find(" ")).substr(0, message.find("-"));
+        for (auto i : publicCommandList) {
+            if (i == command) return true;
+        }
+        return false;
+    } else if (message[0] == '/' && message.find(" ") == std::string::npos) {
+        for (auto i : localCommandList) {
+            if (i == message) return true;
+        }
+        return false;
+    } else return true;
 }
 
 void PrintHelpMenu() {
@@ -95,15 +130,13 @@ int main() {
                 send(client, username.c_str(), username.size(), 0);
             }
         }
-
         if(username == "/exit") return 1;
     }
 
-    std::thread(receive_messages, client).detach();
+    std::thread(ReceiveMessage, client).detach();
 
     while(true) {
         std::string message = WriteMessage();
-
         if (message == "/exit") break;
         if (message == "/help") PrintHelpMenu();
         else send(client, message.c_str(), message.size(), 0);

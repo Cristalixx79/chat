@@ -103,14 +103,16 @@ void ClientHandle(int client_socket) {
 
             for (auto it = users.begin(); it != users.end(); it++) {
                 if ((*it).second == address) {
-                    std::cout << ">> " << (*it).second << '\n';
-                    SendPrivateMessage(message, (*it).first);
+                    std::string privateMessage = std::string(username) + "(private):" + message.substr(message.find(" "), message.size());
+                    SendPrivateMessage(privateMessage, (*it).first);
+                    message = "";
                     break;
                 }
             }
         } else {
             std::cout << "\033[90m >> Отправлено пользователем " << message << "\033[0m\n";
             SendBroadcastMessage(message, client_socket);
+            message = "";
         }
     }
 
