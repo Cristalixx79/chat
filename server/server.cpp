@@ -132,31 +132,39 @@ void ClientHandle(int clientSocket) {
     }
 }
 
+bool IsCommandFound(const std::string& command) {
+    for (auto i : adminCommands) {
+        if (command == i) return true;
+    }
+    return false;
+}
+
+bool IsUserFound(const std::string& user) {
+    for (auto it = users.begin(); it != users.end(); it++) {
+        if ((*it).second == user) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void AdminPanel() {
     while (true) {
         std::string action = "";
         std::getline(std::cin, action);
         std::string command = action.substr(0, action.find(" "));
         std::string user = action.substr(action.find(" ") + 1, action.size() - 1);
-
-        bool isAvailableCommand = false;
-        for (auto i : adminCommands) {
-            if (command == i) isAvailableCommand = true;
-        }
-        if (!isAvailableCommand) {
-            std::cout << "\033[91m -- \"" << command << "\" command not found. Try again: \033[0m";
+        if (action.find(" ") == std::string::npos) {
+            std::cout << "\033[91m -- Неправильный формат команды \033[0m\n";
             continue;
         }
 
-        bool isUserFound = false;
-        for (auto it = users.begin(); it != users.end(); it++) {
-            if ((*it).second == user) {
-                isUserFound = true;
-                break;
-            }
+        if (!IsCommandFound(command)) {
+            std::cout << "\033[91m -- Команда \"" << command << "\" не найдена. Попробуйте снова: \033[0m";
+            continue;
         }
-        if (!isUserFound) {
-            std::cout << "\033[91m -- \"" << user << "\" user not found. Try again: \033[0m";
+        if (!IsUserFound(user)) {
+            std::cout << "\033[91m -- Пользователь \"" << user << "\" не найден. Попробуйте снова: \033[0m";
             continue;
         }
 
