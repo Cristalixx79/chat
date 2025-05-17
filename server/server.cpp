@@ -19,12 +19,12 @@ namespace {
 const int kMaxBacklog = 10;
 const int kMaxUsernameSize = 32;
 const int kMaxMessageSize = 1024;
-const std::string registrationSuccsses = "200";
-const std::string registrationError = "300";
-const std::string privateMessageSendingError = "\033[91mServer: error while sending private message. User not found\033[0m";
-const std::string warning = "\033[91mWarning! Don't spam! Next warning = ban!\033[0m";
-const std::string ban = "/ban";
-const std::vector<std::string> adminCommands({"/warn", "/ban"});
+const std::string kRegistrationSuccsses = "200";
+const std::string kRegistrationError = "300";
+const std::string kPrivateMessageSendingError = "\033[91mServer: error while sending private message. User not found\033[0m";
+const std::string kWarningCommand = "\033[91mWarning! Don't spam! Next warning = ban!\033[0m";
+const std::string kBanCommand = "/ban";
+const std::vector<std::string> kAdminCommands({"/warn", "/ban"});
 }
 
 class Server {
@@ -59,7 +59,7 @@ private:
                 std::lock_guard<std::mutex> lock(clientMutex);
                 for (auto it = users.begin(); it != users.end(); it++) {
                     if ((*it).second == user) {
-                        send((*it).first, warning.c_str(), warning.size(), 0);
+                        send((*it).first, kWarningCommand.c_str(), kWarningCommand.size(), 0);
                         break;
                     }
                 }
@@ -67,15 +67,14 @@ private:
                 std::lock_guard<std::mutex> lock(clientMutex);
                 for (auto it = users.begin(); it != users.end(); it++) {
                     if ((*it).second == user) {
-                        send((*it).first, ban.c_str(), ban.size(), 0);
+                        send((*it).first, kBanCommand.c_str(), kBanCommand.size(), 0);
                         break;
                     }
                 }
             }
         }
     }
-    void ClientHandle(int clientSocket) {
-        char username[kMaxUsernameSize]{};
+    void Registrate(int clientSocket, char* username) {
         bool isRegistrated = false;
         ssize_t clientBytesReceived = 0;
 
@@ -97,11 +96,16 @@ private:
             }
 
             if (isRegistrated) {
-                send(clientSocket, registrationSuccsses.c_str(), registrationSuccsses.size(), 0);
+                send(clientSocket, kRegistrationSuccsses.c_str(), kRegistrationSuccsses.size(), 0);
             } else {
-                send(clientSocket, registrationError.c_str(), registrationError.size(), 0);
+                send(clientSocket, kRegistrationError.c_str(), kRegistrationError.size(), 0);
             }
         }
+    }
+    void ClientHandle(int clientSocket) {
+        char username[kMaxUsernameSize]{};
+        Registrate(clientSocket, username);
+
         counter++;
         std::cout << "\033[92m -- Пользователь " << username << " подключился! Всего пользователей: " << counter << "\033[0m\n";
 
@@ -138,7 +142,7 @@ private:
                         break;
                     }
                 }
-                if (!isSent) send(clientSocket, privateMessageSendingError.c_str(), privateMessageSendingError.size(), 0);
+                if (!isSent) send(clientSocket, kPrivateMessageSendingError.c_str(), kPrivateMessageSendingError.size(), 0);
             } else {
                 std::cout << "\033[90m >> Отправлено пользователем " << message << "\033[0m\n";
                 SendBroadcastMessage(message, clientSocket);
@@ -157,7 +161,7 @@ private:
         }
     }
     bool IsCommandFound(const std::string& command) {
-        for (auto i : adminCommands) {
+        for (auto i : kAdminCommands) {
             if (command == i) return true;
         }
         return false;
@@ -198,8 +202,8 @@ public:
             std::exit(EXIT_FAILURE);
         }
 
-        address.sin_family = AF_INET;
         address.sin_addr.s_addr = INADDR_ANY;
+        address.sin_family = AF_INET;
         address.sin_port = htons(54000);
 
         if (bind(serverSocket, (sockaddr*)&address, sizeof(address)) < 0) {
