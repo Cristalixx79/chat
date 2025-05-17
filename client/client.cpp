@@ -24,12 +24,12 @@ private:
         std::string message = ColorMessage();
         if (ValidateMessage(message)) return message;
 
-        std::cout << "\033[91m -- Такой команды нет, попробуйте снова\033[0m\n";
+        std::cout << "\033[91m -- Такой команды нет, попробуйте снова: \033[0m";
         bool isValidated = false;
         while (!isValidated) {
             message = ColorMessage();
             if (ValidateMessage(message)) isValidated = true;
-            else std::cout << "\033[91m -- Такой команды нет, попробуйте снова\033[0m\n";
+            else std::cout << "\033[91m -- Такой команды нет, попробуйте снова: \033[0m";
         }
         return message;
     }
@@ -41,19 +41,19 @@ private:
             name = ColorMessage();
 
             if (name.find(" ") == std::string::npos) isValidated = true;
-            else std::cout << "\033[91m -- Имя должно состоять из одного слова\033[0m\n";
+            else std::cout << "\033[91m -- Имя должно состоять из одного слова: \033[0m";
         }
 
         return name;
     }
     std::string ColorMessage() {
-    std::string message = "";
-    std::cout << "\033[90m";
-    std::getline(std::cin, message);
-    std::cout << "\033[0m";
+        std::string message = "";
+        std::cout << "\033[90m";
+        std::getline(std::cin, message);
+        std::cout << "\033[0m";
 
-    return message;
-}
+        return message;
+    }
     bool ValidateMessage(const std::string& message) {
         if (message[0] == '/' && message.find(" ") != std::string::npos) {
             if (message.find("-") == std::string::npos) return false;
