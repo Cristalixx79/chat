@@ -234,6 +234,10 @@ Server::Server() {
     std::cout << "\033[90m -- Ожидение пользователей...\033[0m\n";
 }
 
+Server::~Server() {
+    close(serverSocket);
+}
+
 void Server::StartServer() {
     std::thread th(&Server::AdminPanel, this);
     th.detach();
@@ -248,10 +252,6 @@ void Server::StartServer() {
         std::thread th(&Server::ClientHandle, this, clientSocket);
         th.detach();
     }
-}
-
-Server::~Server() {
-    close(serverSocket);
 }
 
 int main() {
