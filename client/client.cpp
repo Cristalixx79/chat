@@ -10,8 +10,8 @@
 
 namespace {
 const int kMaxMessageSize = 1024;
-const std::vector<std::string> localCommandList({"/exit", "/help"});
-const std::vector<std::string> publicCommandList({"/msg"});
+const std::vector<std::string> kLocalCommandList({"/exit", "/help"});
+const std::vector<std::string> kPublicCommandList({"/msg"});
 }
 
 class Client {
@@ -40,7 +40,7 @@ private:
         while (!isValidated) {
             name = ColorMessage();
 
-            if (name.find(" ") == std::string::npos) isValidated = true;
+            if (name.find(' ') == std::string::npos && name[0] != '/') isValidated = true;
             else std::cout << "\033[91m -- Имя должно состоять из одного слова: \033[0m";
         }
 
@@ -55,15 +55,15 @@ private:
         return message;
     }
     bool ValidateMessage(const std::string& message) {
-        if (message[0] == '/' && message.find(" ") != std::string::npos) {
+        if (message[0] == '/' && message.find(' ') != std::string::npos) {
             if (message.find("-") == std::string::npos) return false;
-            std::string command = message.substr(0, message.find(" ")).substr(0, message.find("-"));
-            for (auto i : publicCommandList) {
+            std::string command = message.substr(0, message.find(' ')).substr(0, message.find("-"));
+            for (auto i : kPublicCommandList) {
                 if (i == command) return true;
             }
             return false;
-        } else if (message[0] == '/' && message.find(" ") == std::string::npos) {
-            for (auto i : localCommandList) {
+        } else if (message[0] == '/' && message.find(' ') == std::string::npos) {
+            for (auto i : kLocalCommandList) {
                 if (i == message) return true;
             }
             return false;
