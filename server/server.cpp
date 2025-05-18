@@ -175,7 +175,7 @@ private:
         }
         return false;
     }
-    void SendBroadcastMessage(const std::string& message, int receiverSocket) {
+    void SendBroadcastMessage(const std::string& message, const int receiverSocket) {
         std::lock_guard<std::mutex> lock(clientMutex);
         for (auto it : users) {
             if (it.first != receiverSocket) {
@@ -183,7 +183,7 @@ private:
             }
         }
     }
-    void SendPrivateMessage(const std::string& message, int receiverSocket) {
+    void SendPrivateMessage(const std::string& message, const int receiverSocket) {
         std::lock_guard<std::mutex> lock(clientMutex);
         for (auto it : users) {
             if (it.first == receiverSocket) {
