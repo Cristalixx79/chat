@@ -74,39 +74,11 @@ private:
             }
         }
     }
+
     void ClientHandle(int clientSocket) {
         char username[kMaxUsernameSize]{};
-        bool isRegistrated = false;
-        ssize_t clientBytesReceived = 0;
+        if (!IsRegistrated(clientSocket, username)) return;
 
-        while (!isRegistrated) {
-            memset(username, 0, sizeof(username));
-            clientBytesReceived = recv(clientSocket, username, sizeof(username), 0);
-            if (clientBytesReceived <= 0) {
-                std::cout << "\033[91m -- Пользователь " << username << " отключился! Всего пользователей: " << (users.size() - 1) << "\033[0m\n";
-                counter--;
-                break;
-            }
-
-            if (users.size() == 0) {
-                isRegistrated = true;
-            } else {
-                for (size_t i = 0; i < users.size(); i++) {
-                    if (std::string(username) == users[i].second) {
-                        isRegistrated = false;
-                        break;
-                    } else {
-                        isRegistrated = true;
-                    }
-                }
-            }
-
-            if (isRegistrated) {
-                send(clientSocket, registrationSuccsses.c_str(), registrationSuccsses.size(), 0);
-            } else {
-                send(clientSocket, registrationError.c_str(), registrationError.size(), 0);
-            }
-        }
         counter++;
         std::cout << "\033[92m -- Пользователь " << username << " подключился! Всего пользователей: " << counter << "\033[0m\n";
 
@@ -160,6 +132,41 @@ private:
                 }
             }
         }
+    }
+    bool IsRegistrated(int clientSocket, char* username) {
+        bool isRegistrated = false;
+        ssize_t clientBytesReceived = 0;
+
+        while (!isRegistrated) {
+            memset(username, 0, kMaxUsernameSize);
+            clientBytesReceived = recv(clientSocket, username, sizeof(username), 0);
+            if (clientBytesReceived <= 0) {
+                std::cout << "\033[91m -- Пользователь " << username << " отключился! Всего пользователей: " << (users.size() - 1) << "\033[0m\n";
+                counter--;
+                break;
+            }
+
+            if (users.size() == 0) {
+                isRegistrated = true;
+            } else {
+                for (size_t i = 0; i < users.size(); i++) {
+                    if (std::string(username) == users[i].second) {
+                        isRegistrated = false;
+                        break;
+                    } else {
+                        isRegistrated = true;
+                    }
+                }
+            }
+
+            if (isRegistrated) {
+                send(clientSocket, registrationSuccsses.c_str(), registrationSuccsses.size(), 0);
+                return true;
+            } else {
+                send(clientSocket, registrationError.c_str(), registrationError.size(), 0);
+            }
+        }
+        return false;
     }
     bool IsCommandFound(const std::string& command) {
         for (auto i : adminCommands) {
