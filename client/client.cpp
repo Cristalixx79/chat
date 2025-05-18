@@ -7,32 +7,13 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
+#include "client.h"
 
 namespace {
 const int kMaxMessageSize = 1024;
 const std::vector<std::string> kLocalCommandList({"/exit", "/help"});
 const std::vector<std::string> kPublicCommandList({"/msg"});
 }
-
-class Client {
-private:
-    std::string username;
-    sockaddr_in server;
-    int client;
-
-    std::string WriteMessage();
-    std::string ValidateName();
-    std::string ColorMessage();
-    bool ValidateMessage(const std::string& message);
-    void ReceiveMessage(int client);
-    void Registrate();
-    void PrintHelpMenu();
-public:
-    Client();
-    ~Client();
-
-    void StartClient();
-};
 
 bool Client::ValidateMessage(const std::string& message) {
     if (message[0] == '/' && message.find(' ') != std::string::npos) {
@@ -161,8 +142,8 @@ void Client::StartClient() {
 int main() {
     std::system("clear");
 
-    Client client;
-    client.StartClient();
+    Client cl;
+    cl.StartClient();
 
     return 0;
 }

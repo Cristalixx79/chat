@@ -9,6 +9,8 @@
 #include <netinet/in.h>
 #include <unistd.h>
 
+#include "server.h"
+
 int CountChar(char ch[]) {
     int i = 0;
     while (ch[i] != '\0') i++;
@@ -26,28 +28,6 @@ const std::string kWarningCommand = "\033[91mWarning! Don't spam! Next warning =
 const std::string kBanCommand = "/ban";
 const std::vector<std::string> adminCommands({"/warn", "/ban"});
 }
-
-class Server {
-private:
-    std::vector<std::pair<int, std::string>> users;
-    std::mutex clientMutex;
-    sockaddr_in address;
-    int serverSocket;
-    int counter;
-
-    void AdminPanel();
-    void ClientHandle(int clientSocket);
-    void SendBroadcastMessage(const std::string& message, const int receiverSocket);
-    void SendPrivateMessage(const std::string& message, const int receiverSocket);
-    bool IsRegistrated(int clientSocket, char* username);
-    bool IsUserFound(const std::string& user);
-    bool IsCommandFound(const std::string& command);
-public:
-    Server();
-    ~Server();
-
-    void StartServer();
-};
 
 void Server::AdminPanel() {
     while (true) {
