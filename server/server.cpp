@@ -88,9 +88,7 @@ void Server::ClientHandle(int clientSocket) {
             break;
         }
         std::string message(username, CountChar(username));
-        message.append(": ");
-        message.append(buffer);
-        message.shrink_to_fit();
+        message = message + ": " + std::string(buffer);
 
         if (message.find("/msg-") != std::string::npos) {
             std::string temp = message.erase(0, message.find("/msg-") + 5);
