@@ -11,12 +11,6 @@
 
 #include "server.h"
 
-int CountChar(char ch[]) {
-    int i = 0;
-    while (ch[i] != '\0') i++;
-    return i;
-}
-
 namespace {
 const int kMaxBacklog = 10;
 const int kMaxUsernameSize = 32;
@@ -87,7 +81,7 @@ void Server::ClientHandle(int clientSocket) {
             counter--;
             break;
         }
-        std::string message(username, CountChar(username));
+        std::string message(username, std::strlen(username));
         message = message + ": " + std::string(buffer);
 
         if (message.find("/msg-") != std::string::npos) {
