@@ -1,14 +1,3 @@
-
-#include <iostream>
-#include <string>
-#include <cstring>
-#include <vector>
-#include <thread>
-#include <mutex>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <unistd.h>
-
 #include "server.h"
 
 namespace {
@@ -91,7 +80,7 @@ void Server::ClientHandle(int clientSocket) {
             for (auto it = users.begin(); it != users.end(); it++) {
                 if ((*it).second == address) {
                     std::string privateMessage = std::string(username) + "(private):" + message.substr(message.find(' '), message.size());
-                    SendPrivateMessage(privateMessage, (*it).first);
+                    sender.SendPrivate(users, privateMessage, clientSocket);
                     isSent = true;
                     break;
                 }
@@ -99,7 +88,7 @@ void Server::ClientHandle(int clientSocket) {
             if (!isSent) send(clientSocket, kPrivateMessageSendingError.c_str(), kPrivateMessageSendingError.size(), 0);
         } else {
             std::cout << "\033[90m >> Отправлено пользователем " << message << "\033[0m\n";
-            SendBroadcastMessage(message, clientSocket);
+            sender.SendBroadcast(users, message, clientSocket);
         }
     }
 
@@ -111,25 +100,6 @@ void Server::ClientHandle(int clientSocket) {
                 users.erase(it);
                 break;
             }
-        }
-    }
-}
-
-void Server::SendBroadcastMessage(const std::string& message, const int receiverSocket) {
-    std::lock_guard<std::mutex> lock(clientMutex);
-    for (auto it : users) {
-        if (it.first != receiverSocket) {
-            send(it.first, message.c_str(), message.size(), 0);
-        }
-    }
-}
-
-void Server::SendPrivateMessage(const std::string& message, const int receiverSocket) {
-    std::lock_guard<std::mutex> lock(clientMutex);
-    for (auto it : users) {
-        if (it.first == receiverSocket) {
-            send(it.first, message.c_str(), message.size(), 0);
-            break;
         }
     }
 }

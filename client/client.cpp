@@ -111,7 +111,7 @@ Client::Client() {
         std::exit(EXIT_FAILURE);
     }
     sockaddr_in server = {};
-    server.sin_addr.s_addr = inet_addr("192.168.2.70");
+    server.sin_addr.s_addr = inet_addr("127.0.0.1");
     server.sin_family = AF_INET;
     server.sin_port = htons(54000);
     if (connect(client , (sockaddr *)&server , sizeof(server)) < 0) {
