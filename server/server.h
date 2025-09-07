@@ -15,6 +15,16 @@
 
 typedef std::vector<std::pair<int, std::string>> userList;
 
+namespace 
+{
+    const int kMaxBacklog = 10;
+    const int kMaxUsernameSize = 32;
+    const int kMaxMessageSize = 1024;
+    const std::string kRegistrationSuccsses = "200";
+    const std::string kRegistrationError = "300";
+    const std::string kPrivateMessageSendingError = "\033[91mServer: error while sending private message. User not found\033[0m";
+}
+
 class Server {
 private:
     userList users;

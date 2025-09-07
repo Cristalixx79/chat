@@ -50,7 +50,7 @@ void AdminPanel::RunCommand(std::vector<std::string> &commandData)
         {
             if ((*it).second == commandData[1])
             {
-                sender.SendPrivate(users, Admin::kWarningCommand.c_str(), (*it).first);
+                sender.SendPrivate(users, Admin::kWarningMessage.c_str(), (*it).first);
                 break;
             }
         }

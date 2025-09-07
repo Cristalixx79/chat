@@ -1,15 +1,5 @@
 #include "server.h"
 
-namespace
-{
-    const int kMaxBacklog = 10;
-    const int kMaxUsernameSize = 32;
-    const int kMaxMessageSize = 1024;
-    const std::string kRegistrationSuccsses = "200";
-    const std::string kRegistrationError = "300";
-    const std::string kPrivateMessageSendingError = "\033[91mServer: error while sending private message. User not found\033[0m";
-}
-
 void Server::ClientHandle(int clientSocket)
 {
     char username[kMaxUsernameSize]{};
@@ -117,18 +107,6 @@ bool Server::IsRegistrated(int clientSocket, char *username)
         else
         {
             sender.SendPrivate(users, kRegistrationError, clientSocket);
-        }
-    }
-    return false;
-}
-
-bool Server::IsUserFound(const std::string &user)
-{
-    for (auto it = users.begin(); it != users.end(); it++)
-    {
-        if ((*it).second == user)
-        {
-            return true;
         }
     }
     return false;

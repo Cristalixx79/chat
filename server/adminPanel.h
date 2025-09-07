@@ -16,7 +16,7 @@ namespace Admin {
         const std::vector<std::string> userAddressedCommands({"/warn", "/ban"});
     }
 
-    const std::string kWarningCommand = "\033[91mWarning! Don't spam! Next warning = ban!\033[0m";
+    const std::string kWarningMessage = "\033[91mWarning! Don't spam! Next warning = ban!\033[0m";
 }
 
 class AdminPanel {
