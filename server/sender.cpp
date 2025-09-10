@@ -9,12 +9,7 @@ void Sender::SendBroadcast(userList users, const std::string& msg, int recevierS
     }
 }
 
-void Sender::SendPrivate(userList users, const std::string& msg, int recevierSocket) {
+void Sender::SendPrivate(const int recevierSocket, const std::string& msg) {
     std::lock_guard<std::mutex> lock(mtx);
-    for (auto it : users) {
-        if (it.first == recevierSocket) {
-            send(it.first, msg.c_str(), msg.size(), 0);
-            break;
-        }
-    }
+    send(recevierSocket, msg.c_str(), msg.size(), 0);
 }

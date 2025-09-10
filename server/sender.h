@@ -12,5 +12,5 @@ class Sender {
     std::mutex mtx;
 public:
     void SendBroadcast(userList users, const std::string& msg, int recevierSocket);
-    void SendPrivate(userList users, const std::string& msg, int recevierSocket);
+    void SendPrivate(const int recevierSocket, const std::string& msg);
 };

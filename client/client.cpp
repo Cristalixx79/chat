@@ -54,6 +54,7 @@ void Client::Registrate() {
     std::cout << "\033[92m -- Подключено к серверу!\n -- Ведите ваше имя: \033[0m";
     username = ValidateName();
     send(client, username.c_str(), username.size(), 0);
+
     bool isRegistrated = false;
     while (!isRegistrated) {
         char registrationResult[3]{};

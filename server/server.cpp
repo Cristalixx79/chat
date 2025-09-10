@@ -17,6 +17,8 @@ void Server::ClientHandle(int clientSocket)
     {
         std::memset(buffer, 0, sizeof(buffer));
         ssize_t clientBytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+        //std::cout << clientBytesReceived << buffer << '\n';
+
         if (clientBytesReceived <= 0)
         {
             std::cout << "\033[91m -- Пользователь " << username << " отключился! Всего пользователей: " << (users.size() - 1) << "\033[0m\n";
@@ -36,13 +38,13 @@ void Server::ClientHandle(int clientSocket)
                 if ((*it).second == address)
                 {
                     std::string privateMessage = std::string(username) + "(private):" + message.substr(message.find(' '), message.size());
-                    sender.SendPrivate(users, privateMessage, (*it).first);
+                    sender.SendPrivate((*it).first, privateMessage);
                     isSent = true;
                     break;
                 }
             }
             if (!isSent)
-                sender.SendPrivate(users, kPrivateMessageSendingError.c_str(), clientSocket);
+                sender.SendPrivate(clientSocket, kPrivateMessageSendingError.c_str());
         }
         else
         {
@@ -73,6 +75,7 @@ bool Server::IsRegistrated(int clientSocket, char *username)
     {
         std::memset(username, 0, kMaxUsernameSize);
         clientBytesReceived = recv(clientSocket, username, sizeof(username), 0);
+
         if (clientBytesReceived <= 0)
         {
             std::cout << "\033[91m -- Пользователь " << username << " отключился! Всего пользователей: " << (users.size() - 1) << "\033[0m\n";
@@ -100,13 +103,14 @@ bool Server::IsRegistrated(int clientSocket, char *username)
         }
         if (isRegistrated)
         {
-            sender.SendPrivate(users, kRegistrationSuccsses, clientSocket);
+            //send(clientSocket, "200", 4, 0);
+            sender.SendPrivate(clientSocket, kRegistrationSuccsses);
             panel.Update(clientSocket, username);
             return true;
         }
         else
         {
-            sender.SendPrivate(users, kRegistrationError, clientSocket);
+            sender.SendPrivate(clientSocket, kRegistrationError);
         }
     }
     return false;
